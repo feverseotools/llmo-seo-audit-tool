@@ -20,6 +20,3 @@ vaderSentiment # Added for basic sentiment analysis
 # >>> nltk.download('punkt')
 # >>> nltk.download('stopwords')
 # >>> nltk.download('vader_lexicon') # VADER lexicon (or it might download on first use)
-```
-
-Remember to run `pip install -r requirements.txt` to install these libraries and follow the instructions in the comments to download the necessary NLTK data packag
