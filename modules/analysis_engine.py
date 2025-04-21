@@ -1,183 +1,355 @@
 import time
 import random
-import streamlit as st # Import streamlit if you need st.error/warning inside functions
-# Import necessary libraries for actual analysis later
-# import google.generativeai as genai
-# import openai
-# # Ensure prompts are imported correctly if you uncomment LLM calls
-# from .prompt_templates import (
-#     CONTENT_CHUNKING_PROMPT,
-#     ENTITY_PRESENCE_PROMPT,
-#     SEMANTIC_INTENT_PROMPT,
-#     STRUCTURED_DATA_PROMPT,
-#     LLM_PARSING_PROMPT,
-#     ZERO_CLICK_SIGNALS_PROMPT
-# )
+import streamlit as st
+import re
+from collections import Counter
+from urllib.parse import urlparse, urljoin
 
-# --- Placeholder Analysis Functions ---
-# These now accept an `api_keys` dictionary
+# --- Import libraries for Free Checks ---
+# Using try-except blocks to handle potential import errors gracefully
+try:
+    import nltk
+    from nltk.corpus import stopwords
+    from nltk.tokenize import word_tokenize, sent_tokenize
+except ImportError:
+    st.error("NLTK library not found. Please install it (`pip install nltk`) and download necessary data.")
+    nltk = None # Set to None to check later
 
-def _call_llm_api(prompt_template, content, api_keys, preferred_model='gemini'):
+try:
+    from bs4 import BeautifulSoup # To handle soup object passed in config
+except ImportError:
+     st.error("BeautifulSoup4 library not found. Please install it (`pip install beautifulsoup4`).")
+     BeautifulSoup = None
+
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+except ImportError:
+    st.error("vaderSentiment library not found. Please install it (`pip install vaderSentiment`).")
+    SentimentIntensityAnalyzer = None
+
+# --- Download NLTK data (if library is available and data not found) ---
+nltk_data_downloaded = True
+if nltk:
+    try:
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('corpora/stopwords')
+        # Check for VADER lexicon via NLTK downloader as well, though VADER often handles its own download
+        nltk.data.find('sentiment/vader_lexicon.zip')
+    except LookupError as e:
+        missing_data = str(e).split("'")[1] # Extract missing package name
+        st.info(f"Downloading NLTK '{missing_data}' data...")
+        try:
+            nltk.download(missing_data, quiet=True)
+        except Exception as download_error:
+             st.error(f"Failed to download NLTK data '{missing_data}': {download_error}")
+             nltk_data_downloaded = False # Flag that setup might be incomplete
+    except Exception as general_nltk_error:
+         st.error(f"An error occurred checking NLTK data: {general_nltk_error}")
+         nltk_data_downloaded = False
+
+
+# --- Initialize VADER (if library is available) ---
+analyzer = None
+if SentimentIntensityAnalyzer:
+    try:
+        analyzer = SentimentIntensityAnalyzer()
+    except LookupError:
+        # This might happen if the NLTK download above didn't cover it or failed
+        st.warning("VADER lexicon might be missing. Attempting NLTK download again...")
+        try:
+            nltk.download('vader_lexicon', quiet=True)
+            analyzer = SentimentIntensityAnalyzer() # Try initializing again
+        except Exception as vader_download_error:
+             st.error(f"Failed to download VADER lexicon via NLTK: {vader_download_error}")
+    except Exception as vader_init_error:
+        st.error(f"Failed to initialize VADER Sentiment Analyzer: {vader_init_error}")
+
+
+# --- LLM API Call Function (Placeholder - unchanged) ---
+def _call_llm_api(prompt_template, content, analysis_config):
     """
-    Placeholder function to simulate calling an LLM API (Gemini/ChatGPT).
-    Replace this with actual API call logic using the provided keys.
-
-    Args:
-        prompt_template (str): The prompt template string (e.g., from prompt_templates.py).
-        content (str): The content to analyze.
-        api_keys (dict): Dictionary containing API keys like {'openai': '...', 'gemini': '...'}.
-        preferred_model (str): 'gemini' or 'openai' to simulate using a specific key.
-
-    Returns:
-        dict: Analysis results with score and recommendations.
+    Placeholder function to simulate calling the selected LLM API.
+    Replace this with actual API call logic using the provided key and provider.
     """
-    openai_key = api_keys.get("openai")
-    gemini_key = api_keys.get("gemini")
-
-    # Select the key based on preference
-    key_to_use = gemini_key if preferred_model == 'gemini' else openai_key
-    model_name = preferred_model.capitalize()
-
+    provider = analysis_config.get("provider")
+    api_key = analysis_config.get("api_key")
+    model_name = provider.capitalize() if provider else "Unknown"
     print(f"--- Simulating LLM Call ({model_name}) ---")
-    # print(f"Prompt Template Used: {prompt_template[:100]}...") # Uncomment to see part of the prompt template
-    # print(f"Content Snippet: {content[:100]}...") # Uncomment to see part of the content
-
-    # Check if the required key is present
-    if not key_to_use:
-         print(f"Error: Missing API key for {model_name}")
-         # Optionally show error in UI if needed, though app.py checks keys first
-         # st.error(f"Configuration Error: Missing API key for {model_name}.")
-         # Return a dictionary matching the expected output format
-         return {"score": 0, "recommendations": [{"text": f"Configuration Error: Missing API key for {model_name}.", "priority": "Critical"}]}
+    if not api_key or not provider:
+         error_msg = f"Configuration Error: Missing API key or provider selection."
+         print(error_msg)
+         return {"score": 0, "recommendations": [{"text": error_msg, "priority": "Critical"}]}
     else:
-         # Indicate which key *would* be used (avoid printing full key)
-         print(f"Using {model_name} Key: {'*' * (len(key_to_use) - 4)}{key_to_use[-4:]}") # Print last 4 chars for verification hint
-
+         print(f"Using {model_name} Key: {'*' * (len(api_key) - 4)}{api_key[-4:]}")
     print(f"------------------------------------")
+    time.sleep(random.uniform(0.5, 1.5)) # Shorter simulation delay
 
-    # Simulate network delay
-    time.sleep(random.uniform(1.0, 2.5)) # Slightly reduced delay for simulation
-
-    # --- Replace below with actual API call using the specific key ---
-    # Example (Conceptual - requires specific library usage & error handling):
-    # try:
-    #     # Format the prompt with the actual content
-    #     full_prompt = prompt_template.format(content=content) # Make sure placeholder names match
-    #     result_text = None # Initialize result_text
-    #
-    #     if preferred_model == 'gemini':
-    #         # --- Actual Gemini Call ---
-    #         # Ensure google.generativeai is imported as genai
-    #         # Handle configuration carefully - avoid reconfiguring globally if possible
-    #         # Consider creating a model instance if needed
-    #         # genai.configure(api_key=gemini_key) # Example: configure if not done elsewhere
-    #         # model = genai.GenerativeModel('gemini-pro') # Or other suitable model
-    #         # response = model.generate_content(full_prompt)
-    #         # result_text = response.text
-    #         # --- End Actual Gemini Call ---
-    #         # Simulated JSON response for Gemini
-    #         result_text = '{"score": 75, "recommendations": [{"text": "Simulated Gemini Response", "priority": "Medium"}]}'
-    #
-    #     elif preferred_model == 'openai':
-    #         # --- Actual OpenAI Call ---
-    #         # Ensure openai library is imported and >= 1.0
-    #         # client = openai.OpenAI(api_key=openai_key) # Initialize client with key
-    #         # response = client.chat.completions.create(
-    #         #    model="gpt-3.5-turbo", # Or other model like gpt-4
-    #         #    messages=[
-    #         #        {"role": "system", "content": "You are an expert SEO and LLM Optimization (LLMO) analyst."},
-    #         #        {"role": "user", "content": full_prompt}
-    #         #    ],
-    #         #    response_format={ "type": "json_object" } # Request JSON output if using compatible models
-    #         # )
-    #         # result_text = response.choices[0].message.content
-    #         # --- End Actual OpenAI Call ---
-    #         # Simulated JSON response for OpenAI
-    #         result_text = '{"score": 80, "recommendations": [{"text": "Simulated OpenAI Response", "priority": "High"}]}'
-    #
-    #     # --- Parse the result_text (assuming it's JSON as requested in prompts) ---
-    #     import json
-    #     if result_text:
-    #         parsed_result = json.loads(result_text)
-    #         # Add basic validation for expected structure
-    #         if not isinstance(parsed_result.get("score"), int) or not isinstance(parsed_result.get("recommendations"), list):
-    #             raise ValueError("LLM response JSON does not match expected format (score: int, recommendations: list).")
-    #         # Further validation on recommendation structure if needed
-    #         for rec in parsed_result.get("recommendations", []):
-    #              if not isinstance(rec.get("text"), str) or not isinstance(rec.get("priority"), str):
-    #                   raise ValueError("Recommendation item does not match expected format (text: str, priority: str).")
-    #         return parsed_result
-    #     else:
-    #         raise ValueError("LLM did not return any result text.")
-    #
-    # except json.JSONDecodeError as e:
-    #      print(f"Error: LLM response was not valid JSON for {model_name}. Response: {result_text[:200]}...")
-    #      st.warning(f"Could not parse analysis results from {model_name}. Check logs for details.")
-    #      return {"score": 0, "recommendations": [{"text": f"Failed to parse {model_name} response (Invalid JSON).", "priority": "Critical"}]}
-    # except ValueError as e:
-    #      print(f"Error: LLM response JSON format validation failed for {model_name}. Error: {e}")
-    #      st.warning(f"Analysis results from {model_name} had unexpected format. Check logs.")
-    #      return {"score": 0, "recommendations": [{"text": f"Failed to parse {model_name} response (Format Error).", "priority": "Critical"}]}
-    # except Exception as e:
-    #     # Catch specific API errors from SDKs if possible
-    #     print(f"Error calling {model_name} API or processing response: {e}")
-    #     st.error(f"Error during {model_name} analysis: {e}") # Show specific error in UI
-    #     return {"score": 0, "recommendations": [{"text": f"{model_name} analysis failed due to an API or processing error.", "priority": "Critical"}]}
-    # --- End Replace ---
-
-    # --- Dummy Data Generation (REMOVE THIS SECTION IN REAL IMPLEMENTATION) ---
-    print("--- Using Dummy Data ---")
+    # --- Dummy Data Generation ---
+    print("--- Using Dummy Data for LLM ---")
     score = random.randint(40, 95)
     dummy_recommendations = [
-        {"text": f"This is a placeholder recommendation ({model_name}).", "priority": random.choice(["Low", "Medium", "High"])},
-        {"text": "Replace this simulation with actual LLM output.", "priority": "Critical"}
+        {"text": f"This is a placeholder LLM recommendation ({model_name}).", "priority": random.choice(["Low", "Medium", "High"])},
     ]
     return {"score": score, "recommendations": dummy_recommendations}
     # --- End Dummy Data ---
 
 
-# --- Updated Analysis Function Signatures ---
-# Each function now accepts api_keys and calls the (simulated) LLM API
+# --- Helper Functions for Free Checks ---
 
-def analyze_content_chunking(content, api_keys):
-    """Analyzes Content Chunking using an LLM."""
+def _run_basic_text_checks(content):
+    """Performs basic text analysis (chunking stats, sentiment, density)."""
+    basic_recommendations = []
+
+    # Check if NLTK and VADER are available and ready
+    if not nltk or not nltk_data_downloaded:
+        basic_recommendations.append({"text": "NLTK setup incomplete, skipping basic text checks.", "priority": "Critical"})
+        return basic_recommendations
+    if not analyzer:
+         basic_recommendations.append({"text": "VADER setup incomplete, skipping sentiment analysis.", "priority": "Critical"})
+         # Continue with other checks if possible
+
+    try:
+        # 1. Chunking Stats
+        # Simple split by double newline, might need refinement for different content structures
+        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        num_paragraphs = len(paragraphs)
+        sentences = sent_tokenize(content) # Uses NLTK's punkt
+        num_sentences = len(sentences)
+        avg_sent_per_para = round(num_sentences / num_paragraphs, 1) if num_paragraphs > 0 else 0
+        # Add check for very long sentences
+        long_sentences = [s for s in sentences if len(word_tokenize(s)) > 35] # Example threshold: 35 words
+        basic_recommendations.append({
+            "text": f"[Basic Check - Structure] Content has ~{num_paragraphs} paragraphs, {num_sentences} sentences (avg. {avg_sent_per_para} sentences/para). Found {len(long_sentences)} potentially long sentences (>35 words).",
+            "priority": "Info"
+        })
+
+        # 2. Sentiment Analysis (VADER) - only if analyzer is ready
+        if analyzer:
+            vs = analyzer.polarity_scores(content)
+            sentiment_label = "Neutral"
+            if vs['compound'] >= 0.05: sentiment_label = "Positive"
+            elif vs['compound'] <= -0.05: sentiment_label = "Negative"
+            basic_recommendations.append({
+                "text": f"[Basic Check - Sentiment] Overall Sentiment (VADER): {sentiment_label} (Compound Score: {vs['compound']:.2f})",
+                "priority": "Info"
+            })
+
+        # 3. Keyword Density (Top 5 non-stopwords)
+        stop_words = set(stopwords.words('english')) # Use NLTK's stopwords
+        words = [word.lower() for word in word_tokenize(content) if word.isalpha() and word.lower() not in stop_words]
+        total_words = len(words)
+        if total_words > 20: # Require a minimum number of words for meaningful density
+            word_counts = Counter(words)
+            top_5_keywords = word_counts.most_common(5)
+            density_report = ", ".join([f"'{k}' ({v} times, {((v/total_words)*100):.1f}%)" for k, v in top_5_keywords])
+            basic_recommendations.append({
+                "text": f"[Basic Check - Keywords] Top keywords (density): {density_report}",
+                "priority": "Info"
+            })
+        else:
+             basic_recommendations.append({"text": "[Basic Check - Keywords] Keyword density not calculated (insufficient non-stopword content).", "priority": "Info"})
+
+
+    except Exception as e:
+        print(f"Error during basic text checks: {e}")
+        basic_recommendations.append({"text": f"[Basic Check Error] Could not perform basic text checks: {e}", "priority": "Critical"})
+
+    return basic_recommendations
+
+
+def _run_basic_html_checks(analysis_config):
+    """Performs basic HTML structure checks using the soup object."""
+    basic_recommendations = []
+    soup = analysis_config.get("soup")
+    url = analysis_config.get("input_url") # Get the original URL
+
+    # Check prerequisites
+    if not BeautifulSoup: # Check if library import failed
+         basic_recommendations.append({"text": "BeautifulSoup library not found, skipping HTML checks.", "priority": "Critical"})
+         return basic_recommendations
+    if not soup or not isinstance(soup, BeautifulSoup):
+        return basic_recommendations # Cannot run these checks without soup object
+    if not url: # Need base URL for joining relative links
+        basic_recommendations.append({"text": "[Basic Check Info] Base URL not available, cannot fully analyze relative links.", "priority": "Info"})
+        # Continue with other checks that don't rely on base URL
+
+    try:
+        # Parse base URL safely
+        base_url = ""
+        base_netloc = ""
+        if url:
+            try:
+                base_url_parts = urlparse(url)
+                base_url = f"{base_url_parts.scheme}://{base_url_parts.netloc}"
+                base_netloc = base_url_parts.netloc
+            except Exception as url_parse_error:
+                 print(f"Could not parse base URL {url}: {url_parse_error}")
+                 basic_recommendations.append({"text": f"[Basic Check Warning] Could not parse base URL '{url}', relative link analysis may be inaccurate.", "priority": "Medium"})
+
+
+        # 1. HTML Structure Checks
+        title_tag = soup.find('title')
+        h1_tags = soup.find_all('h1')
+        meta_desc_tag = soup.find('meta', attrs={'name': re.compile(r'^description$', re.I)})
+
+        title_text = title_tag.string.strip() if title_tag and title_tag.string else None
+        if title_text:
+            basic_recommendations.append({"text": f"[Basic Check - HTML] Title Tag found: '{title_text}' (Length: {len(title_text)})", "priority": "Info"})
+        else:
+            basic_recommendations.append({"text": "[Basic Check - HTML] Title Tag: Missing or empty.", "priority": "Medium"})
+
+        if len(h1_tags) == 1:
+             h1_text = h1_tags[0].get_text(strip=True)
+             basic_recommendations.append({"text": f"[Basic Check - HTML] Single H1 Tag found: '{h1_text}'", "priority": "Info"})
+        elif len(h1_tags) == 0:
+             basic_recommendations.append({"text": "[Basic Check - HTML] H1 Tag: Missing.", "priority": "High"})
+        else:
+             basic_recommendations.append({"text": f"[Basic Check - HTML] H1 Tag: Found {len(h1_tags)} H1 tags (Ideally should be 1).", "priority": "Medium"})
+
+        meta_desc_content = meta_desc_tag.get('content','').strip() if meta_desc_tag else None
+        if meta_desc_content:
+            basic_recommendations.append({"text": f"[Basic Check - HTML] Meta Description found (Length: {len(meta_desc_content)}).", "priority": "Info"})
+        else:
+            basic_recommendations.append({"text": "[Basic Check - HTML] Meta Description: Missing or empty.", "priority": "Medium"})
+
+        # 2. Link Analysis
+        internal_links = 0
+        external_links = 0
+        other_links = 0
+        all_links = soup.find_all('a', href=True)
+        for link in all_links:
+            href = link['href']
+            if not href or href.startswith('#'): # Skip empty or fragment links
+                 other_links += 1
+                 continue
+            try:
+                full_url = urljoin(base_url or url, href) # Use base_url if available, else original url
+                parsed_href = urlparse(full_url)
+
+                if parsed_href.scheme in ['http', 'https']:
+                    # Check netloc against base_netloc if available
+                    if base_netloc and parsed_href.netloc == base_netloc:
+                        internal_links += 1
+                    elif base_netloc and parsed_href.netloc != base_netloc:
+                        external_links += 1
+                    else: # Fallback if base_netloc couldn't be parsed
+                         other_links += 1
+                else:
+                    other_links += 1 # mailto, tel, javascript, etc.
+            except Exception as link_parse_error:
+                 print(f"Could not parse link {href}: {link_parse_error}")
+                 other_links += 1 # Count as other if parsing fails
+        basic_recommendations.append({"text": f"[Basic Check - Links] Links Found: {internal_links} Internal, {external_links} External, {other_links} Other/Fragment/Error.", "priority": "Info"})
+
+        # 3. Image Alt Text Check
+        img_tags = soup.find_all('img')
+        imgs_missing_alt = 0
+        imgs_empty_alt = 0
+        for img in img_tags:
+            alt_text = img.get('alt') # Get alt attribute
+            if alt_text is None: # Alt attribute completely missing
+                imgs_missing_alt += 1
+            elif not alt_text.strip(): # Alt attribute exists but is empty or whitespace
+                 imgs_empty_alt += 1
+
+        total_imgs = len(img_tags)
+        if total_imgs > 0:
+             perc_missing = round(((imgs_missing_alt + imgs_empty_alt) / total_imgs) * 100)
+             basic_recommendations.append({"text": f"[Basic Check - Images] Images Found: {total_imgs}. Missing/Empty Alt Text: {imgs_missing_alt + imgs_empty_alt} ({perc_missing}%).", "priority": "Info"})
+             if imgs_missing_alt + imgs_empty_alt > 0:
+                  basic_recommendations.append({"text": "[Basic Check - Images] Recommendation: Ensure all functional images have descriptive alt text.", "priority": "Medium"})
+        else:
+             basic_recommendations.append({"text": "[Basic Check - Images] No images (`<img>` tags) found on page.", "priority": "Info"})
+
+
+    except Exception as e:
+        print(f"Error during basic HTML checks: {e}")
+        basic_recommendations.append({"text": f"[Basic Check Error] Could not perform basic HTML checks: {e}", "priority": "Critical"})
+
+    return basic_recommendations
+
+
+# --- Main Analysis Functions (Updated to include basic checks) ---
+
+def analyze_content_chunking(content, analysis_config):
+    """Analyzes Content Chunking using LLM + Basic Text Stats."""
     print(f"Analyzing Content Chunking...")
-    # Import prompt here or at top of file
+    # Run basic text checks first (includes chunking stats)
+    basic_recs = _run_basic_text_checks(content) # Gets para/sent counts, sentiment, density
+    chunking_stats = [r for r in basic_recs if "[basic check - structure]" in r["text"].lower()] # Extract only structure stats
+
+    # Call LLM for deeper analysis
     from .prompt_templates import CONTENT_CHUNKING_PROMPT
-    # Choose preferred model (e.g., Gemini) and call the API function
-    return _call_llm_api(CONTENT_CHUNKING_PROMPT, content, api_keys, preferred_model='gemini')
+    llm_result = _call_llm_api(CONTENT_CHUNKING_PROMPT, content, analysis_config)
 
-def analyze_entity_presence(content, api_keys):
-    """Analyzes Entity Presence using an LLM."""
+    # Combine results
+    llm_result["recommendations"] = chunking_stats + llm_result.get("recommendations", [])
+    return llm_result
+
+def analyze_entity_presence(content, analysis_config):
+    """Analyzes Entity Presence using LLM + Basic Density."""
     print(f"Analyzing Entity Presence...")
+    basic_recs = _run_basic_text_checks(content)
+    density_rec = [r for r in basic_recs if "[basic check - keywords]" in r["text"].lower()]
+
     from .prompt_templates import ENTITY_PRESENCE_PROMPT
-    # Example: Use OpenAI for this one
-    return _call_llm_api(ENTITY_PRESENCE_PROMPT, content, api_keys, preferred_model='openai')
+    llm_result = _call_llm_api(ENTITY_PRESENCE_PROMPT, content, analysis_config)
 
-def analyze_semantic_intent(content, api_keys):
-    """Analyzes Semantic Intent using an LLM."""
+    llm_result["recommendations"] = density_rec + llm_result.get("recommendations", [])
+    return llm_result
+
+def analyze_semantic_intent(content, analysis_config):
+    """Analyzes Semantic Intent using LLM + Basic Sentiment."""
     print(f"Analyzing Semantic Intent...")
+    basic_recs = _run_basic_text_checks(content)
+    sentiment_rec = [r for r in basic_recs if "[basic check - sentiment]" in r["text"].lower()]
+
     from .prompt_templates import SEMANTIC_INTENT_PROMPT
-    return _call_llm_api(SEMANTIC_INTENT_PROMPT, content, api_keys, preferred_model='gemini')
+    llm_result = _call_llm_api(SEMANTIC_INTENT_PROMPT, content, analysis_config)
 
-def analyze_structured_data(content, api_keys, url=None):
-    """Analyzes Structured Data potential using an LLM."""
+    llm_result["recommendations"] = sentiment_rec + llm_result.get("recommendations", [])
+    return llm_result
+
+def analyze_structured_data(content, analysis_config):
+    """Analyzes Structured Data using LLM + Basic HTML Checks."""
     print(f"Analyzing Structured Data...")
+    # Run basic HTML checks (Title, H1, Desc) - requires soup object
+    basic_recs = _run_basic_html_checks(analysis_config)
+    html_structure_recs = [r for r in basic_recs if "[basic check - html]" in r["text"].lower()]
+
+    # Call LLM (focuses on *opportunities* in text)
     from .prompt_templates import STRUCTURED_DATA_PROMPT
-    # Add context about URL presence if needed for the prompt, though the template doesn't use it
-    # content_with_context = f"URL Context: {url}\n\nContent:\n{content}" if url else content
-    # Pass the original content for now, prompt focuses on text only
-    return _call_llm_api(STRUCTURED_DATA_PROMPT, content, api_keys, preferred_model='gemini')
+    llm_result = _call_llm_api(STRUCTURED_DATA_PROMPT, content, analysis_config)
 
-def analyze_llm_parsing(content, api_keys):
-    """Analyzes LLM Parsing confidence using an LLM."""
+    # Combine
+    llm_result["recommendations"] = html_structure_recs + llm_result.get("recommendations", [])
+    return llm_result
+
+def analyze_llm_parsing(content, analysis_config):
+    """Analyzes LLM Parsing using LLM (+ Readability as proxy if added)."""
     print(f"Analyzing LLM Parsing...")
-    from .prompt_templates import LLM_PARSING_PROMPT
-    return _call_llm_api(LLM_PARSING_PROMPT, content, api_keys, preferred_model='gemini')
+    # Basic text checks (e.g., sentence length) are done in analyze_content_chunking now
+    # Readability score could be added here using textstat if installed
 
-def analyze_zero_click_signals(content, api_keys):
-    """Analyzes Zero-Click Signals formatting using an LLM."""
+    from .prompt_templates import LLM_PARSING_PROMPT
+    llm_result = _call_llm_api(LLM_PARSING_PROMPT, content, analysis_config)
+    # Add readability score if implemented:
+    # readability_recs = _calculate_readability(content) # Needs implementation
+    # llm_result["recommendations"] = readability_recs + llm_result.get("recommendations", [])
+    return llm_result
+
+
+def analyze_zero_click_signals(content, analysis_config):
+    """Analyzes Zero Click Signals using LLM + Basic Link/Alt Text Checks."""
     print(f"Analyzing Zero Click Signals...")
+    # Run basic HTML checks (includes Links, Alt Text) - requires soup
+    basic_recs = _run_basic_html_checks(analysis_config)
+    link_alt_recs = [r for r in basic_recs if "[basic check - links]" in r["text"].lower() or "[basic check - images]" in r["text"].lower()]
+
+    # Call LLM (focuses on formatting like lists, headings in text)
     from .prompt_templates import ZERO_CLICK_SIGNALS_PROMPT
-    # Example: Use OpenAI for this one
-    return _call_llm_api(ZERO_CLICK_SIGNALS_PROMPT, content, api_keys, preferred_model='openai')
+    llm_result = _call_llm_api(ZERO_CLICK_SIGNALS_PROMPT, content, analysis_config)
+
+    # Combine
+    llm_result["recommendations"] = link_alt_recs + llm_result.get("recommendations", [])
+    return llm_result
