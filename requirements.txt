@@ -1,10 +1,25 @@
 streamlit
 requests
 beautifulsoup4
+nltk # Added for tokenization, stopwords
+vaderSentiment # Added for basic sentiment analysis
+
 # Add these when you implement actual LLM calls:
-# openai
+# openai >= 1.0 # Use modern openai library version
 # google-generativeai
+
 # Consider adding these for more advanced processing:
 # spacy
 # readability-lxml
+# textstat # For readability scores
 # python-dotenv # If loading secrets locally outside streamlit
+
+# Note: After installing nltk, you may need to download data packages.
+# Run python and then:
+# >>> import nltk
+# >>> nltk.download('punkt')
+# >>> nltk.download('stopwords')
+# >>> nltk.download('vader_lexicon') # VADER lexicon (or it might download on first use)
+```
+
+Remember to run `pip install -r requirements.txt` to install these libraries and follow the instructions in the comments to download the necessary NLTK data packag
