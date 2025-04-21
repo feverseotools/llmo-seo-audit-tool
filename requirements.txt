@@ -1,13 +1,16 @@
 streamlit
 requests
 beautifulsoup4
-nltk # Added for tokenization, stopwords
-vaderSentiment # Added for basic sentiment analysis
+nltk # For basic text analysis
+vaderSentiment # For basic sentiment analysis
 
-# Add these when you implement actual LLM calls:
-# openai >= 1.0 # Use modern openai library version
-# google-generativeai
+# --- LLM Libraries ---
+# Uncomment the providers you intend to use.
+# Ensure you have API keys for the uncommented providers.
+openai>=1.0 # For OpenAI (GPT-3.5, GPT-4, etc.)
+google-generativeai # For Google Gemini
 
+# --- Optional Libraries ---
 # Consider adding these for more advanced processing:
 # spacy
 # readability-lxml
@@ -19,4 +22,4 @@ vaderSentiment # Added for basic sentiment analysis
 # >>> import nltk
 # >>> nltk.download('punkt')
 # >>> nltk.download('stopwords')
-# >>> nltk.download('vader_lexicon') # VADER lexicon (or it might download on first use)
+# >>> nltk.download('vader_lexicon')
