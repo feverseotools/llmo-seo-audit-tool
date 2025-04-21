@@ -1,178 +1,183 @@
 import time
 import random
+import streamlit as st # Import streamlit if you need st.error/warning inside functions
 # Import necessary libraries for actual analysis later
 # import google.generativeai as genai
 # import openai
+# # Ensure prompts are imported correctly if you uncomment LLM calls
 # from .prompt_templates import (
 #     CONTENT_CHUNKING_PROMPT,
 #     ENTITY_PRESENCE_PROMPT,
-#     # ... import other prompts
+#     SEMANTIC_INTENT_PROMPT,
+#     STRUCTURED_DATA_PROMPT,
+#     LLM_PARSING_PROMPT,
+#     ZERO_CLICK_SIGNALS_PROMPT
 # )
 
 # --- Placeholder Analysis Functions ---
-# Replace these with actual LLM API calls and NLP logic
+# These now accept an `api_keys` dictionary
 
-# Configure API keys (ideally load from st.secrets if running in Streamlit context)
-# try:
-#     genai.configure(api_key=st.secrets["google_ai"]["api_key"])
-#     openai.api_key = st.secrets["openai"]["api_key"]
-# except (AttributeError, KeyError):
-#     print("API keys not found in Streamlit secrets. Ensure secrets.toml is configured.")
-#     # Handle cases where secrets aren't available (e.g., local testing without Streamlit)
-#     # You might use environment variables or other methods here.
-#     pass
-
-
-def _call_llm_api(prompt, content):
+def _call_llm_api(prompt_template, content, api_keys, preferred_model='gemini'):
     """
     Placeholder function to simulate calling an LLM API (Gemini/ChatGPT).
-    Replace this with actual API call logic.
+    Replace this with actual API call logic using the provided keys.
+
+    Args:
+        prompt_template (str): The prompt template string (e.g., from prompt_templates.py).
+        content (str): The content to analyze.
+        api_keys (dict): Dictionary containing API keys like {'openai': '...', 'gemini': '...'}.
+        preferred_model (str): 'gemini' or 'openai' to simulate using a specific key.
+
+    Returns:
+        dict: Analysis results with score and recommendations.
     """
-    print(f"--- Simulating LLM Call ---")
-    # print(f"Prompt: {prompt[:100]}...") # Uncomment to see part of the prompt
-    # print(f"Content: {content[:100]}...") # Uncomment to see part of the content
-    print(f"--------------------------")
+    openai_key = api_keys.get("openai")
+    gemini_key = api_keys.get("gemini")
+
+    # Select the key based on preference
+    key_to_use = gemini_key if preferred_model == 'gemini' else openai_key
+    model_name = preferred_model.capitalize()
+
+    print(f"--- Simulating LLM Call ({model_name}) ---")
+    # print(f"Prompt Template Used: {prompt_template[:100]}...") # Uncomment to see part of the prompt template
+    # print(f"Content Snippet: {content[:100]}...") # Uncomment to see part of the content
+
+    # Check if the required key is present
+    if not key_to_use:
+         print(f"Error: Missing API key for {model_name}")
+         # Optionally show error in UI if needed, though app.py checks keys first
+         # st.error(f"Configuration Error: Missing API key for {model_name}.")
+         # Return a dictionary matching the expected output format
+         return {"score": 0, "recommendations": [{"text": f"Configuration Error: Missing API key for {model_name}.", "priority": "Critical"}]}
+    else:
+         # Indicate which key *would* be used (avoid printing full key)
+         print(f"Using {model_name} Key: {'*' * (len(key_to_use) - 4)}{key_to_use[-4:]}") # Print last 4 chars for verification hint
+
+    print(f"------------------------------------")
 
     # Simulate network delay
-    time.sleep(random.uniform(1.0, 3.0))
+    time.sleep(random.uniform(1.0, 2.5)) # Slightly reduced delay for simulation
 
-    # --- Replace with actual API call ---
-    # Example (Conceptual - requires specific library usage):
+    # --- Replace below with actual API call using the specific key ---
+    # Example (Conceptual - requires specific library usage & error handling):
     # try:
-    #     # For Gemini:
-    #     # model = genai.GenerativeModel('gemini-pro') # Or other suitable model
-    #     # full_prompt = prompt.format(content=content)
-    #     # response = model.generate_content(full_prompt)
-    #     # result_text = response.text
+    #     # Format the prompt with the actual content
+    #     full_prompt = prompt_template.format(content=content) # Make sure placeholder names match
+    #     result_text = None # Initialize result_text
     #
-    #     # For OpenAI:
-    #     # response = openai.ChatCompletion.create(
-    #     #    model="gpt-3.5-turbo", # Or other model
-    #     #    messages=[
-    #     #        {"role": "system", "content": "You are an SEO analysis assistant."},
-    #     #        {"role": "user", "content": prompt.format(content=content)}
-    #     #    ]
-    #     # )
-    #     # result_text = response.choices[0].message['content']
+    #     if preferred_model == 'gemini':
+    #         # --- Actual Gemini Call ---
+    #         # Ensure google.generativeai is imported as genai
+    #         # Handle configuration carefully - avoid reconfiguring globally if possible
+    #         # Consider creating a model instance if needed
+    #         # genai.configure(api_key=gemini_key) # Example: configure if not done elsewhere
+    #         # model = genai.GenerativeModel('gemini-pro') # Or other suitable model
+    #         # response = model.generate_content(full_prompt)
+    #         # result_text = response.text
+    #         # --- End Actual Gemini Call ---
+    #         # Simulated JSON response for Gemini
+    #         result_text = '{"score": 75, "recommendations": [{"text": "Simulated Gemini Response", "priority": "Medium"}]}'
+    #
+    #     elif preferred_model == 'openai':
+    #         # --- Actual OpenAI Call ---
+    #         # Ensure openai library is imported and >= 1.0
+    #         # client = openai.OpenAI(api_key=openai_key) # Initialize client with key
+    #         # response = client.chat.completions.create(
+    #         #    model="gpt-3.5-turbo", # Or other model like gpt-4
+    #         #    messages=[
+    #         #        {"role": "system", "content": "You are an expert SEO and LLM Optimization (LLMO) analyst."},
+    #         #        {"role": "user", "content": full_prompt}
+    #         #    ],
+    #         #    response_format={ "type": "json_object" } # Request JSON output if using compatible models
+    #         # )
+    #         # result_text = response.choices[0].message.content
+    #         # --- End Actual OpenAI Call ---
+    #         # Simulated JSON response for OpenAI
+    #         result_text = '{"score": 80, "recommendations": [{"text": "Simulated OpenAI Response", "priority": "High"}]}'
     #
     #     # --- Parse the result_text (assuming it's JSON as requested in prompts) ---
-    #     # import json
-    #     # parsed_result = json.loads(result_text)
-    #     # return parsed_result # Should contain {"score": ..., "recommendations": [...]}
+    #     import json
+    #     if result_text:
+    #         parsed_result = json.loads(result_text)
+    #         # Add basic validation for expected structure
+    #         if not isinstance(parsed_result.get("score"), int) or not isinstance(parsed_result.get("recommendations"), list):
+    #             raise ValueError("LLM response JSON does not match expected format (score: int, recommendations: list).")
+    #         # Further validation on recommendation structure if needed
+    #         for rec in parsed_result.get("recommendations", []):
+    #              if not isinstance(rec.get("text"), str) or not isinstance(rec.get("priority"), str):
+    #                   raise ValueError("Recommendation item does not match expected format (text: str, priority: str).")
+    #         return parsed_result
+    #     else:
+    #         raise ValueError("LLM did not return any result text.")
     #
+    # except json.JSONDecodeError as e:
+    #      print(f"Error: LLM response was not valid JSON for {model_name}. Response: {result_text[:200]}...")
+    #      st.warning(f"Could not parse analysis results from {model_name}. Check logs for details.")
+    #      return {"score": 0, "recommendations": [{"text": f"Failed to parse {model_name} response (Invalid JSON).", "priority": "Critical"}]}
+    # except ValueError as e:
+    #      print(f"Error: LLM response JSON format validation failed for {model_name}. Error: {e}")
+    #      st.warning(f"Analysis results from {model_name} had unexpected format. Check logs.")
+    #      return {"score": 0, "recommendations": [{"text": f"Failed to parse {model_name} response (Format Error).", "priority": "Critical"}]}
     # except Exception as e:
-    #     print(f"Error calling LLM API: {e}")
-    #     return {"score": 0, "recommendations": [{"text": "LLM analysis failed.", "priority": "Critical"}]}
+    #     # Catch specific API errors from SDKs if possible
+    #     print(f"Error calling {model_name} API or processing response: {e}")
+    #     st.error(f"Error during {model_name} analysis: {e}") # Show specific error in UI
+    #     return {"score": 0, "recommendations": [{"text": f"{model_name} analysis failed due to an API or processing error.", "priority": "Critical"}]}
     # --- End Replace ---
 
-    # --- Dummy Data Generation (REMOVE THIS IN REAL IMPLEMENTATION) ---
+    # --- Dummy Data Generation (REMOVE THIS SECTION IN REAL IMPLEMENTATION) ---
+    print("--- Using Dummy Data ---")
     score = random.randint(40, 95)
     dummy_recommendations = [
-        {"text": "This is a placeholder recommendation.", "priority": random.choice(["Low", "Medium", "High"])},
-        {"text": "Replace this with actual LLM output.", "priority": "Critical"}
+        {"text": f"This is a placeholder recommendation ({model_name}).", "priority": random.choice(["Low", "Medium", "High"])},
+        {"text": "Replace this simulation with actual LLM output.", "priority": "Critical"}
     ]
     return {"score": score, "recommendations": dummy_recommendations}
     # --- End Dummy Data ---
 
 
-def analyze_content_chunking(content):
-    """Placeholder for Content Chunking analysis."""
-    # prompt = CONTENT_CHUNKING_PROMPT # Get prompt from prompt_templates.py
-    # return _call_llm_api(prompt, content) # Call LLM
+# --- Updated Analysis Function Signatures ---
+# Each function now accepts api_keys and calls the (simulated) LLM API
 
-    # --- Dummy Implementation (Remove later) ---
-    score = random.randint(50, 95)
-    recommendations = [
-        {"text": "Break down paragraphs longer than 3 sentences.", "priority": "High"},
-        {"text": "Add a clear summary section.", "priority": "Medium"},
-    ] if score < 85 else [{"text": "Maintain consistent paragraph length.", "priority": "Low"}]
-    time.sleep(random.uniform(0.5, 1.0)) # Simulate work
-    return {"score": score, "recommendations": recommendations}
-    # --- End Dummy ---
+def analyze_content_chunking(content, api_keys):
+    """Analyzes Content Chunking using an LLM."""
+    print(f"Analyzing Content Chunking...")
+    # Import prompt here or at top of file
+    from .prompt_templates import CONTENT_CHUNKING_PROMPT
+    # Choose preferred model (e.g., Gemini) and call the API function
+    return _call_llm_api(CONTENT_CHUNKING_PROMPT, content, api_keys, preferred_model='gemini')
 
-def analyze_entity_presence(content):
-    """Placeholder for Entity Presence analysis."""
-    # prompt = ENTITY_PRESENCE_PROMPT
-    # return _call_llm_api(prompt, content)
+def analyze_entity_presence(content, api_keys):
+    """Analyzes Entity Presence using an LLM."""
+    print(f"Analyzing Entity Presence...")
+    from .prompt_templates import ENTITY_PRESENCE_PROMPT
+    # Example: Use OpenAI for this one
+    return _call_llm_api(ENTITY_PRESENCE_PROMPT, content, api_keys, preferred_model='openai')
 
-    # --- Dummy Implementation (Remove later) ---
-    score = random.randint(60, 100)
-    recommendations = [
-        {"text": "Include more specific product names/models.", "priority": "Medium"},
-        {"text": "Add relevant industry expert citations.", "priority": "Low"},
-    ] if score < 90 else [{"text": "Entity distribution looks good.", "priority": "Low"}]
-    time.sleep(random.uniform(0.5, 1.0))
-    return {"score": score, "recommendations": recommendations}
-    # --- End Dummy ---
+def analyze_semantic_intent(content, api_keys):
+    """Analyzes Semantic Intent using an LLM."""
+    print(f"Analyzing Semantic Intent...")
+    from .prompt_templates import SEMANTIC_INTENT_PROMPT
+    return _call_llm_api(SEMANTIC_INTENT_PROMPT, content, api_keys, preferred_model='gemini')
 
-def analyze_semantic_intent(content):
-    """Placeholder for Semantic Intent analysis."""
-    # prompt = SEMANTIC_INTENT_PROMPT
-    # return _call_llm_api(prompt, content)
+def analyze_structured_data(content, api_keys, url=None):
+    """Analyzes Structured Data potential using an LLM."""
+    print(f"Analyzing Structured Data...")
+    from .prompt_templates import STRUCTURED_DATA_PROMPT
+    # Add context about URL presence if needed for the prompt, though the template doesn't use it
+    # content_with_context = f"URL Context: {url}\n\nContent:\n{content}" if url else content
+    # Pass the original content for now, prompt focuses on text only
+    return _call_llm_api(STRUCTURED_DATA_PROMPT, content, api_keys, preferred_model='gemini')
 
-     # --- Dummy Implementation (Remove later) ---
-    score = random.randint(40, 85)
-    recommendations = [
-        {"text": "Strengthen topical focus by removing tangential content.", "priority": "High"},
-        {"text": "Add more specific examples related to the main topic.", "priority": "Medium"},
-    ] if score < 75 else [{"text": "Include relevant case studies or use cases.", "priority": "Low"}]
-    time.sleep(random.uniform(0.5, 1.0))
-    return {"score": score, "recommendations": recommendations}
-    # --- End Dummy ---
+def analyze_llm_parsing(content, api_keys):
+    """Analyzes LLM Parsing confidence using an LLM."""
+    print(f"Analyzing LLM Parsing...")
+    from .prompt_templates import LLM_PARSING_PROMPT
+    return _call_llm_api(LLM_PARSING_PROMPT, content, api_keys, preferred_model='gemini')
 
-def analyze_structured_data(content, url=None):
-    """Placeholder for Structured Data analysis."""
-    # Note: Actual structured data validation is complex.
-    # LLM can suggest opportunities based on content.
-    # Parsing existing schema needs the HTML (fetched in content_processor).
-    # You might pass the HTML soup object or relevant script tags here if needed.
-
-    # prompt = STRUCTURED_DATA_PROMPT
-    # Add context about URL presence if needed:
-    # context_prompt = prompt + f"\nAnalysis Context: URL provided ({url})" if url else prompt
-    # return _call_llm_api(context_prompt, content)
-
-     # --- Dummy Implementation (Remove later) ---
-    score = random.randint(70, 100)
-    recommendations = []
-    if url:
-         recommendations.append({"text": "Validate schema markup implementation (requires checking HTML source).", "priority": "High"})
-    if "faq" in content.lower() or "?" in content: # Simple check
-         recommendations.append({"text": "Consider adding FAQ schema for common questions.", "priority": "Medium"})
-    if not recommendations:
-        recommendations.append({"text": "Ensure all required fields are present in schema.", "priority": "Low"})
-    time.sleep(random.uniform(0.5, 1.0))
-    return {"score": score, "recommendations": recommendations}
-    # --- End Dummy ---
-
-
-def analyze_llm_parsing(content):
-    """Placeholder for LLM Parsing analysis."""
-    # prompt = LLM_PARSING_PROMPT
-    # return _call_llm_api(prompt, content)
-
-     # --- Dummy Implementation (Remove later) ---
-    score = random.randint(55, 90)
-    recommendations = [
-        {"text": "Use more consistent terminology.", "priority": "Medium"},
-        {"text": "Add clear definitions for technical terms.", "priority": "Low"},
-    ] if score < 80 else [{"text": "Content structure appears LLM-friendly.", "priority": "Low"}]
-    time.sleep(random.uniform(0.5, 1.0))
-    return {"score": score, "recommendations": recommendations}
-    # --- End Dummy ---
-
-def analyze_zero_click_signals(content):
-    """Placeholder for Zero-Click Signals analysis."""
-    # prompt = ZERO_CLICK_SIGNALS_PROMPT
-    # return _call_llm_api(prompt, content)
-
-     # --- Dummy Implementation (Remove later) ---
-    score = random.randint(45, 80)
-    recommendations = [
-        {"text": "Format key facts as bullet points or tables.", "priority": "High"},
-        {"text": "Add clear section headers using H2-H3 tags.", "priority": "Medium"},
-        {"text": "Structure Q&A content clearly.", "priority": "Low"},
-    ] if score < 70 else [{"text": "Consider using lists for key information.", "priority": "Low"}]
-    time.sleep(random.uniform(0.5, 1.0))
-    return {"score": score, "recommendations": recommendations}
-    # --- End Dummy ---
+def analyze_zero_click_signals(content, api_keys):
+    """Analyzes Zero-Click Signals formatting using an LLM."""
+    print(f"Analyzing Zero Click Signals...")
+    from .prompt_templates import ZERO_CLICK_SIGNALS_PROMPT
+    # Example: Use OpenAI for this one
+    return _call_llm_api(ZERO_CLICK_SIGNALS_PROMPT, content, api_keys, preferred_model='openai')
