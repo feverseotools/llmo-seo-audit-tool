@@ -1,7 +1,11 @@
 import streamlit as st
 import time  # To simulate analysis time
 
-# Import functions from modules
+# --- Set Page Config FIRST ---
+# This MUST be the first Streamlit command executed
+st.set_page_config(layout="wide")
+
+# --- Import Modules (with error handling) ---
 # Ensure the 'modules' directory is in the same path or Python path
 try:
     from modules.content_processor import fetch_content_from_url
@@ -16,11 +20,11 @@ try:
     )
     from modules.visualization import display_results
 except ImportError as e:
-    st.error(f"Error importing modules: {e}. Make sure the 'modules' directory and its files exist.")
+    # Now it's safe to call st.error here
+    st.error(f"Fatal Error: Could not import necessary modules: {e}. Please check dependencies and file structure.")
     st.stop() # Stop execution if modules can't be imported
 
 # --- Streamlit App UI ---
-st.set_page_config(layout="wide")
 st.title("🤖 LLMO Audit Assistant")
 
 # --- API Key Input in Sidebar ---
@@ -71,79 +75,66 @@ if analyze_button and key_provided:
     if input_method == "URL":
         if url_input:
             with st.spinner(f"Fetching and processing content from {url_input}..."):
-                # Fetch both text and soup object
                 processed_text, soup_object = fetch_content_from_url(url_input)
-            if processed_text is not None: # Check if text extraction was successful (even if short)
+            if processed_text is not None:
                 st.success(f"Successfully fetched and processed content (approx. {len(processed_text)} characters).")
                 content_valid = True
-            # No explicit else needed, errors shown by fetch_content_from_url
         else:
             st.warning("Please enter a URL to analyze.")
     else: # Raw Content
         if raw_content_input and len(raw_content_input.strip()) > 10:
             processed_text = raw_content_input.strip()
-            soup_object = None # No soup object for raw text
+            soup_object = None
             st.success(f"Using provided raw content (approx. {len(processed_text)} characters).")
             content_valid = True
         elif not raw_content_input or len(raw_content_input.strip()) <= 10:
              st.warning("Please paste sufficient content (more than 10 characters) to analyze.")
 
     # --- Perform Analysis if Content is Valid ---
-    if content_valid and processed_text is not None: # Ensure processed_text is not None
+    if content_valid and processed_text is not None:
         st.info(f"Starting LLMO analysis modules using {llm_provider}...")
         analysis_progress = st.progress(0)
         status_text = st.empty()
 
         try:
-            # Pass provider, key, soup object (if available), and URL (if available) in config
             analysis_config = {
                 "provider": llm_provider.lower(),
                 "api_key": api_key,
-                "soup": soup_object,  # Pass the soup object here (will be None for raw text)
-                "input_url": url_input if input_method == "URL" else None # Pass original URL if available
+                "soup": soup_object,
+                "input_url": url_input if input_method == "URL" else None
             }
-
-            # Define analysis steps
-            # These functions are expected to exist in analysis_engine.py
             analysis_steps = [
                 ("Content Chunking", analyze_content_chunking),
-                ("Entity Presence", analyze_entity_presence), # Will add density check
-                ("Semantic Intent", analyze_semantic_intent), # Will add sentiment check
-                ("Structured Data", analyze_structured_data), # Will add basic HTML checks
-                ("LLM Parsing", analyze_llm_parsing),         # Readability is already a proxy
-                ("Zero Click Signals", analyze_zero_click_signals), # Will add Link & Alt text checks
+                ("Entity Presence", analyze_entity_presence),
+                ("Semantic Intent", analyze_semantic_intent),
+                ("Structured Data", analyze_structured_data),
+                ("LLM Parsing", analyze_llm_parsing),
+                ("Zero Click Signals", analyze_zero_click_signals),
             ]
             total_steps = len(analysis_steps)
 
-            # Run analysis functions
             for i, (name, func) in enumerate(analysis_steps):
                 status_text.text(f"Running: {name}...")
-                # Call function with processed_text and the config dictionary
-                # The analysis function will now use text or soup from the config as needed
+                current_url = url_input if input_method == "URL" else None # Define current_url here
+                # Pass config consistently
                 final_results[name.replace(" ", "_")] = func(processed_text, analysis_config)
-                # Update progress bar
                 analysis_progress.progress((i + 1) / total_steps)
 
-
             status_text.text("Analysis Complete!")
-            time.sleep(1) # Keep "Complete" message visible briefly
-            status_text.empty() # Clear status text
-            analysis_progress.empty() # Clear progress bar
-
-            # Display the results using the imported visualization function
-            display_results(final_results)
-
-            # Optional: Display the content analyzed
-            with st.expander("View Analyzed Content Snippet"):
-                 display_text = str(processed_text)
-                 st.text(display_text[:1500] + "..." if len(display_text) > 1500 else display_text) # Show a bit more content
-
-        except Exception as e:
-            st.error(f"An unexpected error occurred during analysis: {e}")
-            # Ensure progress indicators are cleared on error
+            time.sleep(1)
             status_text.empty()
             analysis_progress.empty()
 
-    # Handle cases where button was clicked, key was present, but content wasn't valid
+            display_results(final_results)
+
+            with st.expander("View Analyzed Content Snippet"):
+                 display_text = str(processed_text)
+                 st.text(display_text[:1500] + "..." if len(display_text) > 1500 else display_text)
+
+        except Exception as e:
+            st.error(f"An unexpected error occurred during analysis: {e}")
+            status_text.empty()
+            analysis_progress.empty()
+
     elif analyze_button and not content_valid:
         st.warning("Analysis could not proceed: No valid content provided or fetched.")
